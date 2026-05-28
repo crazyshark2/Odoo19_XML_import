@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML IMPORT LOG FORM VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_import_log_form_view" model="ir.ui.view">
+        <field name="name">xml.import.log.form</field>
+        <field name="model">xml.import.log</field>
+        <field name="arch" type="xml">
+            <form string="İçe Aktarım Logu">
+                <header>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="running,done,error"/>
+                </header>
+
+                <sheet>
+                    <widget name="web_ribbon" title="Başarılı"
+                            bg_color="text-bg-success" invisible="state != 'done'"/>
+                    <widget name="web_ribbon" title="Hata"
+                            bg_color="text-bg-danger" invisible="state != 'error'"/>
+                    <widget name="web_ribbon" title="Çalışıyor"
+                            bg_color="text-bg-info" invisible="state != 'running'"/>
+
+                    <group col="4">
+                        <group colspan="2" string="Genel Bilgiler">
+                            <field name="source_id" readonly="1"/>
+                            <field name="start_time" widget="datetime" readonly="1"/>
+                            <field name="end_time" widget="datetime" readonly="1"/>
+                            <field name="duration" readonly="1"/>
+                        </group>
+                        <group colspan="2" string="İstatistikler">
+                            <div class="row text-center">
+                                <div class="col">
+                                    <h3 class="text-primary mb-0">
+                                        <field name="total_products" readonly="1"/>
+                                    </h3>
+                                    <small class="text-muted">Toplam</small>
+                                </div>
+                                <div class="col">
+                                    <h3 class="text-success mb-0">
+                                        <field name="products_created" readonly="1"/>
+                                    </h3>
+                                    <small class="text-muted">Oluşturulan</small>
+                                </div>
+                                <div class="col">
+                                    <h3 class="text-info mb-0">
+                                        <field name="products_updated" readonly="1"/>
+                                    </h3>
+                                    <small class="text-muted">Güncellenen</small>
+                                </div>
+                                <div class="col">
+                                    <h3 class="text-warning mb-0">
+                                        <field name="products_skipped" readonly="1"/>
+                                    </h3>
+                                    <small class="text-muted">Atlanan</small>
+                                </div>
+                                <div class="col">
+                                    <h3 class="text-danger mb-0">
+                                        <field name="products_failed" readonly="1"/>
+                                    </h3>
+                                    <small class="text-muted">Hatalı</small>
+                                </div>
+                            </div>
+                        </group>
+                    </group>
+
+                    <notebook invisible="state != 'error'">
+                        <page string="Hata Detayları" icon="fa-exclamation-triangle">
+                            <div class="alert alert-danger" role="alert">
+                                <field name="error_details" widget="text" readonly="1"
+                                       class="text-monospace"/>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML IMPORT LOG LIST VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_import_log_tree_view" model="ir.ui.view">
+        <field name="name">xml.import.log.tree</field>
+        <field name="model">xml.import.log</field>
+        <field name="arch" type="xml">
+            <list string="İçe Aktarım Logları" default_order="start_time desc"
+                  decoration-success="state == 'done'"
+                  decoration-danger="state == 'error'"
+                  decoration-info="state == 'running'">
+                <field name="source_id"/>
+                <field name="start_time" widget="datetime"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'error'"
+                       decoration-info="state == 'running'"/>
+                <field name="total_products"/>
+                <field name="products_created" string="Oluşturulan"/>
+                <field name="products_updated" string="Güncellenen"/>
+                <field name="products_skipped" string="Atlanan" optional="show"/>
+                <field name="products_failed" string="Hatalı"/>
+                <field name="duration" string="Süre (sn)"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML IMPORT LOG SEARCH VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_import_log_search_view" model="ir.ui.view">
+        <field name="name">xml.import.log.search</field>
+        <field name="model">xml.import.log</field>
+        <field name="arch" type="xml">
+            <search string="İçe Aktarım Logları">
+                <field name="source_id"/>
+                <separator/>
+                <filter name="done" string="Başarılı"
+                        domain="[('state', '=', 'done')]"/>
+                <filter name="error" string="Hatalı"
+                        domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <filter name="group_by_source" string="Kaynak"
+                        context="{'group_by': 'source_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML IMPORT LOG ACTION -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_import_log_action" model="ir.actions.act_window">
+        <field name="name">İçe Aktarım Logları</field>
+        <field name="res_model">xml.import.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="xml_import_log_search_view"/>
+        <field name="context">{'search_default_today': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">
+                Henüz içe aktarım logu bulunmuyor.
+            </p>
+            <p class="text-muted">
+                XML kaynaklarından ürün içe aktardığınızda loglar burada görünecektir.
+            </p>
+        </field>
+    </record>
+
+</odoo>

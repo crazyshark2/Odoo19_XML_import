@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- XML Export Form View -->
+    <record id="view_xml_product_export_form" model="ir.ui.view">
+        <field name="name">xml.product.export.form</field>
+        <field name="model">xml.product.export</field>
+        <field name="arch" type="xml">
+            <form string="XML Export Kaynağı">
+                <header>
+                    <button name="action_preview_xml" type="object" string="XML Önizle" class="oe_highlight" icon="fa-eye"/>
+                    <button name="action_view_products" type="object" string="Ürünleri Görüntüle" icon="fa-list"/>
+                    <button name="action_regenerate_token" type="object" string="Token Yenile" icon="fa-refresh" confirm="Token yenilensin mi?"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" name="action_view_products" type="object" icon="fa-cube">
+                            <field name="product_count" widget="statinfo" string="Ürün"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Export Kaynağı Adı"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group string="XML Link">
+                            <field name="xml_url" widget="CopyClipboardURL" readonly="1"/>
+                            <field name="access_count" readonly="1"/>
+                            <field name="last_access" readonly="1"/>
+                        </group>
+                        <group string="Güvenlik">
+                            <field name="access_token" password="True"/>
+                            <field name="password"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Ürün Filtreleri" name="filters">
+                            <group>
+                                <group>
+                                    <field name="filter_type"/>
+                                    <field name="include_zero_stock"/>
+                                    <field name="min_stock"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Filtre Kriterleri">
+                                <field name="category_ids" widget="many2many_tags"/>
+                                <field name="supplier_id"/>
+                                <field name="product_ids" widget="many2many_tags"/>
+                            </group>
+                        </page>
+                        
+                        <page string="Fiyat Ayarları" name="pricing">
+                            <group>
+                                <group string="Fiyat Kaynağı">
+                                    <field name="price_field"/>
+                                    <field name="currency_id"/>
+                                </group>
+                                <group string="Fiyat Düzenleme">
+                                    <field name="price_markup_type"/>
+                                    <field name="price_markup_value"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="XML Format" name="format">
+                            <group>
+                                <group string="Format Seçimi">
+                                    <field name="xml_format"/>
+                                    <field name="root_element"/>
+                                    <field name="product_element"/>
+                                </group>
+                                <group string="İçerik Ayarları">
+                                    <field name="include_images"/>
+                                    <field name="include_description"/>
+                                    <field name="include_variants"/>
+                                </group>
+                            </group>
+                            
+                            <separator string="Özel Alan Eşleştirmeleri"/>
+                            <field name="field_mapping_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="odoo_field"/>
+                                    <field name="xml_element"/>
+                                    <field name="use_cdata"/>
+                                    <field name="default_value"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- XML Export List View -->
+    <record id="view_xml_product_export_list" model="ir.ui.view">
+        <field name="name">xml.product.export.list</field>
+        <field name="model">xml.product.export</field>
+        <field name="arch" type="xml">
+            <list string="XML Export Kaynakları">
+                <field name="name"/>
+                <field name="xml_format"/>
+                <field name="filter_type"/>
+                <field name="product_count"/>
+                <field name="access_count"/>
+                <field name="last_access"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- XML Export Search View -->
+    <record id="view_xml_product_export_search" model="ir.ui.view">
+        <field name="name">xml.product.export.search</field>
+        <field name="model">xml.product.export</field>
+        <field name="arch" type="xml">
+            <search string="XML Export Ara">
+                <field name="name"/>
+                <field name="xml_format"/>
+                <filter string="Aktif" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Pasif" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- XML Export Action -->
+    <record id="action_xml_product_export" model="ir.actions.act_window">
+        <field name="name">XML Export Kaynakları</field>
+        <field name="res_model">xml.product.export</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                İlk XML Export Kaynağınızı Oluşturun
+            </p>
+        </field>
+    </record>
+
+</odoo>

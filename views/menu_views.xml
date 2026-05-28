@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Ana Menü (Root) -->
+    <menuitem id="mobilsoft_xml_import_menu_root"
+        name="XML Ürün"
+        web_icon="mobilsoft_xml_import,static/description/icon.png"
+        sequence="60"/>
+
+    <!-- İçe Aktarım (Import) Menüsü -->
+    <menuitem id="mobilsoft_xml_import_menu_import"
+        name="İçe Aktarım (Import)"
+        parent="mobilsoft_xml_import_menu_root"
+        sequence="10"/>
+
+    <!-- XML Import Kaynakları -->
+    <menuitem id="mobilsoft_xml_import_menu_sources"
+        name="XML Import Kaynakları"
+        parent="mobilsoft_xml_import_menu_import"
+        action="xml_product_source_action"
+        sequence="10"/>
+
+    <!-- Dışa Aktarım (Export) Menüsü -->
+    <menuitem id="mobilsoft_xml_import_menu_export"
+        name="Dışa Aktarım (Export)"
+        parent="mobilsoft_xml_import_menu_root"
+        sequence="15"/>
+
+    <!-- XML Export Kaynakları -->
+    <menuitem id="mobilsoft_xml_import_menu_export_sources"
+        name="XML Export Kaynakları"
+        parent="mobilsoft_xml_import_menu_export"
+        action="action_xml_product_export"
+        sequence="10"/>
+
+    <!-- Ürünler Menüsü -->
+    <menuitem id="mobilsoft_xml_import_menu_products"
+        name="Ürünler"
+        parent="mobilsoft_xml_import_menu_root"
+        sequence="20"/>
+
+    <!-- Dropship Ürünleri -->
+    <menuitem id="mobilsoft_xml_import_menu_dropship_products"
+        name="Dropship Ürünleri"
+        parent="mobilsoft_xml_import_menu_products"
+        action="product_template_action_dropship"
+        sequence="10"/>
+
+    <!-- Raporlar Menüsü -->
+    <menuitem id="mobilsoft_xml_import_menu_reports"
+        name="Raporlar"
+        parent="mobilsoft_xml_import_menu_root"
+        sequence="30"/>
+
+    <!-- İçe Aktarım Logları -->
+    <menuitem id="mobilsoft_xml_import_menu_logs"
+        name="İçe Aktarım Logları"
+        parent="mobilsoft_xml_import_menu_reports"
+        action="xml_import_log_action"
+        sequence="10"/>
+
+</odoo>

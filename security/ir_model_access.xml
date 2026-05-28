@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="access_xml_product_source_user" model="ir.model.access">
+            <field name="name">xml.product.source.user</field>
+            <field name="model_id" search="[('model','=','xml.product.source')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_product_source_manager" model="ir.model.access">
+            <field name="name">xml.product.source.manager</field>
+            <field name="model_id" search="[('model','=','xml.product.source')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_field_mapping_user" model="ir.model.access">
+            <field name="name">xml.field.mapping.user</field>
+            <field name="model_id" search="[('model','=','xml.field.mapping')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_field_mapping_manager" model="ir.model.access">
+            <field name="name">xml.field.mapping.manager</field>
+            <field name="model_id" search="[('model','=','xml.field.mapping')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_category_mapping_user" model="ir.model.access">
+            <field name="name">xml.category.mapping.user</field>
+            <field name="model_id" search="[('model','=','xml.category.mapping')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_category_mapping_manager" model="ir.model.access">
+            <field name="name">xml.category.mapping.manager</field>
+            <field name="model_id" search="[('model','=','xml.category.mapping')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_import_log_user" model="ir.model.access">
+            <field name="name">xml.import.log.user</field>
+            <field name="model_id" search="[('model','=','xml.import.log')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_import_log_manager" model="ir.model.access">
+            <field name="name">xml.import.log.manager</field>
+            <field name="model_id" search="[('model','=','xml.import.log')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_product_export_user" model="ir.model.access">
+            <field name="name">xml.product.export.user</field>
+            <field name="model_id" search="[('model','=','xml.product.export')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_product_export_manager" model="ir.model.access">
+            <field name="name">xml.product.export.manager</field>
+            <field name="model_id" search="[('model','=','xml.product.export')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_export_field_mapping_user" model="ir.model.access">
+            <field name="name">xml.export.field.mapping.user</field>
+            <field name="model_id" search="[('model','=','xml.export.field.mapping')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_export_field_mapping_manager" model="ir.model.access">
+            <field name="name">xml.export.field.mapping.manager</field>
+            <field name="model_id" search="[('model','=','xml.export.field.mapping')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_product_enrichment_source_user" model="ir.model.access">
+            <field name="name">product.enrichment.source.user</field>
+            <field name="model_id" search="[('model','=','product.enrichment.source')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_product_enrichment_source_manager" model="ir.model.access">
+            <field name="name">product.enrichment.source.manager</field>
+            <field name="model_id" search="[('model','=','product.enrichment.source')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_product_enrichment_log_user" model="ir.model.access">
+            <field name="name">product.enrichment.log.user</field>
+            <field name="model_id" search="[('model','=','product.enrichment.log')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_product_enrichment_log_manager" model="ir.model.access">
+            <field name="name">product.enrichment.log.manager</field>
+            <field name="model_id" search="[('model','=','product.enrichment.log')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_product_enrichment_wizard_user" model="ir.model.access">
+            <field name="name">product.enrichment.wizard.user</field>
+            <field name="model_id" search="[('model','=','product.enrichment.wizard')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_product_enrichment_result_user" model="ir.model.access">
+            <field name="name">product.enrichment.result.user</field>
+            <field name="model_id" search="[('model','=','product.enrichment.result')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_product_enrichment_import_wizard_user" model="ir.model.access">
+            <field name="name">product.enrichment.import.wizard.user</field>
+            <field name="model_id" search="[('model','=','product.enrichment.import.wizard')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_variant_mapping_user" model="ir.model.access">
+            <field name="name">xml.variant.mapping.user</field>
+            <field name="model_id" search="[('model','=','xml.variant.mapping')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="access_xml_variant_mapping_manager" model="ir.model.access">
+            <field name="name">xml.variant.mapping.manager</field>
+            <field name="model_id" search="[('model','=','xml.variant.mapping')]"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_preview_wizard_user" model="ir.model.access">
+            <field name="name">xml.preview.wizard.user</field>
+            <field name="model_id" search="[('model','=','xml.preview.wizard')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_xml_source_path_user" model="ir.model.access">
+            <field name="name">xml.source.path.user</field>
+            <field name="model_id" search="[('model','=','xml.source.path')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_select_path_wizard_user" model="ir.model.access">
+            <field name="name">select.path.wizard.user</field>
+            <field name="model_id" search="[('model','=','select.path.wizard')]"/>
+            <field name="group_id" ref="base.group_user"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+    </data>
+</odoo>

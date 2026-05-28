@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Türkiye Kaynakları (Öncelikli) -->
+        <record id="enrichment_source_hepsiburada" model="product.enrichment.source">
+            <field name="name">Hepsiburada</field>
+            <field name="source_type">hepsiburada</field>
+            <field name="sequence">10</field>
+            <field name="active">True</field>
+            <field name="base_url">https://www.hepsiburada.com</field>
+            <field name="search_url_pattern">https://www.hepsiburada.com/ara?q={query}</field>
+        </record>
+
+        <record id="enrichment_source_trendyol" model="product.enrichment.source">
+            <field name="name">Trendyol</field>
+            <field name="source_type">trendyol</field>
+            <field name="sequence">20</field>
+            <field name="active">True</field>
+            <field name="base_url">https://www.trendyol.com</field>
+            <field name="search_url_pattern">https://www.trendyol.com/sr?q={query}</field>
+        </record>
+
+        <record id="enrichment_source_n11" model="product.enrichment.source">
+            <field name="name">N11</field>
+            <field name="source_type">n11</field>
+            <field name="sequence">30</field>
+            <field name="active">True</field>
+            <field name="base_url">https://www.n11.com</field>
+            <field name="search_url_pattern">https://www.n11.com/arama?q={query}</field>
+        </record>
+
+        <!-- Global Kaynaklar -->
+        <record id="enrichment_source_amazon" model="product.enrichment.source">
+            <field name="name">Amazon</field>
+            <field name="source_type">amazon</field>
+            <field name="sequence">40</field>
+            <field name="active">True</field>
+            <field name="base_url">https://www.amazon.com</field>
+            <field name="search_url_pattern">https://www.amazon.com/s?k={query}</field>
+        </record>
+
+        <record id="enrichment_source_google" model="product.enrichment.source">
+            <field name="name">Google Shopping</field>
+            <field name="source_type">google</field>
+            <field name="sequence">50</field>
+            <field name="active">False</field>
+            <field name="base_url">https://www.google.com</field>
+            <field name="search_url_pattern">https://www.google.com/search?tbm=shop&amp;q={query}</field>
+        </record>
+
+        <record id="enrichment_source_upc_database" model="product.enrichment.source">
+            <field name="name">UPC Database</field>
+            <field name="source_type">upc_database</field>
+            <field name="sequence">60</field>
+            <field name="active">True</field>
+            <field name="base_url">https://www.upcdatabase.com</field>
+            <field name="search_url_pattern">https://www.upcdatabase.com/item/{query}</field>
+        </record>
+
+    </data>
+</odoo>

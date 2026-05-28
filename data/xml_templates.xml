@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- XML Şablon Varsayılan Değerleri -->
+    
+    <!-- Varsayılan Ürün Kategorisi -->
+    <record id="product_category_dropship" model="product.category">
+        <field name="name">Dropship Ürünleri</field>
+    </record>
+
+</odoo>

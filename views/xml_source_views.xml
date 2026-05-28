@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML KAYNAK FORM VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_product_source_form_view" model="ir.ui.view">
+        <field name="name">xml.product.source.form</field>
+        <field name="model">xml.product.source</field>
+        <field name="arch" type="xml">
+            <form string="XML Kaynağı">
+                <header>
+                    <button name="action_test_connection" type="object"
+                            string="Bağlantıyı Test Et"
+                            class="btn-secondary"
+                            icon="fa-plug"
+                            invisible="state == 'active'"/>
+                    <button name="action_preview_xml" type="object"
+                            string="XML Önizle"
+                            class="btn-secondary"
+                            icon="fa-eye"/>
+                    <button name="action_discover_xml_paths" type="object"
+                            string="XML Yollarını Keşfet"
+                            class="btn-secondary"
+                            icon="fa-map-signs"/>
+                    <button name="action_import_products" type="object"
+                            string="Ürünleri Şimdi Çek"
+                            class="btn-primary"
+                            icon="fa-download"
+                            invisible="state not in ('active', 'draft')"/>
+                    <button name="action_load_template_mappings" type="object"
+                            string="Şablon Yükle"
+                            class="btn-secondary"
+                            icon="fa-magic"
+                            invisible="xml_template == 'custom'"/>
+                    <button name="action_apply_dropship_route" type="object"
+                            string="Dropship Rotası Uygula"
+                            class="btn-secondary"
+                            icon="fa-truck"
+                            invisible="product_count == 0"/>
+                    <button name="action_sync_suppliers" type="object"
+                            string="Tedarikçi Senkronize"
+                            class="btn-secondary"
+                            icon="fa-user"
+                            invisible="not supplier_id or product_count == 0"/>
+                    <button name="action_sync_ecommerce_categories" type="object"
+                            string="E-Ticaret Kategorilerini Oluştur"
+                            class="btn-secondary"
+                            icon="fa-tags"
+                            invisible="not category_mapping_ids"/>
+                    <button name="action_activate" type="object"
+                            string="Aktifleştir"
+                            class="btn-success"
+                            icon="fa-check"
+                            invisible="state == 'active'"/>
+                    <button name="action_pause" type="object"
+                            string="Duraklat"
+                            icon="fa-pause"
+                            invisible="state != 'active'"/>
+                    <button name="action_reset" type="object"
+                            string="Sıfırla"
+                            icon="fa-refresh"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active"/>
+                </header>
+
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_products" type="object"
+                                class="oe_stat_button" icon="fa-cubes">
+                            <field name="product_count" string="Ürünler" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_logs" type="object"
+                                class="oe_stat_button" icon="fa-history">
+                            <field name="log_count" string="Loglar" widget="statinfo"/>
+                        </button>
+                    </div>
+
+                    <widget name="web_ribbon" title="Arşivlendi"
+                            bg_color="text-bg-danger" invisible="active"/>
+                    <widget name="web_ribbon" title="Aktif"
+                            bg_color="text-bg-success" invisible="state != 'active'"/>
+                    <widget name="web_ribbon" title="Hata"
+                            bg_color="text-bg-danger" invisible="state != 'error'"/>
+
+                    <div class="oe_title">
+                        <label for="name" string="Kaynak Adı"/>
+                        <h1>
+                            <field name="name" placeholder="Tedarikçi XML Feed Adı"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="XML Bağlantı Ayarları">
+                            <field name="xml_url" widget="url"
+                                   placeholder="https://tedarikci.com/xml/products.xml"/>
+                            <field name="xml_template" widget="selection"/>
+                            <field name="root_element" placeholder="//Products/Product"/>
+                            <field name="xml_username" placeholder="Opsiyonel"/>
+                            <field name="xml_password" password="True" placeholder="Opsiyonel"/>
+                            <field name="xml_token" password="True" placeholder="API Token"
+                                    invisible="xml_template not in ('tesan', 'soap', 'tesan_soap')"/>
+                            <field name="supplier_id" options="{'no_create': True}"/>
+                            <field name="xml_stock_url" widget="url"
+                                   placeholder="Stok XML URL (Index Grup/Netex)"
+                                   invisible="xml_template not in ('indexgrup', 'netex')"/>
+                            <field name="xml_price_url" widget="url"
+                                   placeholder="Fiyat XML URL (Index Grup/Netex)"
+                                   invisible="xml_template not in ('indexgrup', 'netex')"/>
+                        </group>
+                        <group string="Durum Bilgisi">
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="last_sync" readonly="1" widget="datetime"/>
+                            <field name="next_sync" readonly="1" widget="datetime"/>
+                            <field name="last_error" readonly="1" invisible="not last_error"
+                                   widget="text"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Alan Eşleştirmeleri -->
+                        <page string="Alan Eşleştirmeleri" name="mappings" icon="fa-link">
+                            <field name="field_mapping_ids" nolabel="1">
+                                <list>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="odoo_field"/>
+                                    <field name="variant_attribute_id"
+                                           invisible="odoo_field != 'variant_attribute'"
+                                           options="{'no_create': True}"
+                                           placeholder="Renk, Beden..."
+                                           required="odoo_field == 'variant_attribute' and not variant_name_subpath and not variant_value_subpath"/>
+                                     <field name="variant_name_subpath"
+                                            invisible="odoo_field != 'variant_attribute'"
+                                            placeholder="Name alt yolu"/>
+                                     <field name="variant_value_subpath"
+                                            invisible="odoo_field != 'variant_attribute'"
+                                            placeholder="Value alt yolu"/>
+                                    <field name="variant_mapping_count"
+                                           invisible="odoo_field != 'variant_attribute'"
+                                           string="Varyant"/>
+                                    <field name="xml_path" placeholder="ProductCode"/>
+                                    <field name="transform"/>
+                                    <field name="default_value" placeholder="Varsayılan"/>
+                                    <field name="is_required" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                            <div class="card bg-light mt-3">
+                                <div class="card-body py-2">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="card-title">XML Yolu Örnekleri</h6>
+                                            <ul class="mb-0 small">
+                                                <li><code>ProductCode</code> - Doğrudan element</li>
+                                                <li><code>Category/Name</code> - İç içe element</li>
+                                                <li><code>@id</code> - Attribute</li>
+                                                <li><code>Images/Image[1]</code> - İlk resim</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="card-title">Varyant Kullanımı</h6>
+                                            <p class="mb-1 small">
+                                                <strong style="color:#17a2b8;">Düz varyant (Color, Size direkt element):</strong><br/>
+                                                ① Alan Eşleştirmelerinde <code>Varyant Özellik Değeri</code> seçin<br/>
+                                                ② Özellik seçin (Renk, Beden...)<br/>
+                                                ③ XML yolunu yazın: <code>Variants/Variant/Color</code><br/>
+                                                ④ "Değerleri Tespit Et" butonuna basın<br/>
+                                                ⑤ Varyant Eşleştirmelerinde eşleme yapın
+                                            </p>
+                                            <p class="mb-0 small text-muted">
+                                                <strong style="color:#28a745;">İç içe varyant (&lt;Attribute&gt;&lt;Name&gt;/&lt;Value&gt;):</strong><br/>
+                                                ① <code>Varyant Özellik Değeri</code> seçin<br/>
+                                                ② XML yolu: <code>Variants/Variant/VariantAttributes/Attribute</code><br/>
+                                                ③ Ad alt yolu: <code>Name</code>, Değer alt yolu: <code>Value</code><br/>
+                                                ④ Varyant Özelliği <strong>boş kalabilir</strong> (XML'deki Name'den bulur)<br/>
+                                                ⑤ "Değerleri Tespit Et" → eşleştirmelerde <code>XML Özellik Adı</code> dolu gelir<br/>
+                                                ⑥ Her satırda Odoo özelliğini ve değerini seçin
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+
+                        <!-- Kategori Eşleştirmeleri -->
+                        <page string="Kategori Eşleştirmeleri" name="category_mappings" icon="fa-folder">
+                            <field name="category_mapping_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="xml_category" placeholder="Elektronik > Telefon"/>
+                                    <field name="match_type"/>
+                                    <field name="odoo_category_id" placeholder="Odoo Kategori"
+                                           options="{'no_create': True}"/>
+                                    <field name="ecommerce_category_ids" widget="many2many_tags"
+                                           placeholder="E-Ticaret Kategorileri"
+                                           options="{'no_create': True}"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                            <div class="card bg-light mt-3">
+                                <div class="card-body py-2">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="card-title">Kullanım</h6>
+                                            <p class="small text-muted mb-0">
+                                                XML'den gelen kategori adını sol tarafta girin,
+                                                sağ tarafta eşleşecek Odoo kategorisini ve
+                                                E-ticaret kategorilerini seçin.
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="card-title">Eşleşme Türleri</h6>
+                                            <ul class="mb-0 small">
+                                                <li><strong>Tam Eşleşme:</strong> Birebir aynı</li>
+                                                <li><strong>İçerir:</strong> XML hedefi içerirse</li>
+                                                <li><strong>İle Başlar:</strong> Prefix eşleşmesi</li>
+                                                <li><strong>Regex:</strong> Düzenli ifade</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+
+                        <!-- Varyant Özellik Eşleştirmeleri -->
+                        <page string="Varyant Eşleştirmeleri" name="variant_mappings" icon="fa-share-alt">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="small text-muted">
+                                    XML'den gelen varyant değerlerini Odoo özellik değerlerine eşleyin.
+                                </span>
+                                <button name="action_detect_variant_values" type="object"
+                                        string="Varyant Değerlerini Tespit Et"
+                                        class="btn-secondary btn-sm"
+                                        icon="fa-magic"/>
+                            </div>
+                            <field name="variant_mapping_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="xml_variant_value" placeholder="KIRMIZI"/>
+                                    <field name="xml_attribute_name" placeholder="Çerçeve (ops.)" optional="hide"/>
+                                    <field name="match_type"/>
+                                    <field name="attribute_id" options="{'no_create': True}"/>
+                                    <field name="attribute_value_id" options="{'no_create': True}"
+                                           domain="[('attribute_id', '=', attribute_id)]"/>
+                                    <field name="allow_create_value" widget="boolean_toggle"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                            <div class="card bg-light mt-3">
+                                <div class="card-body py-2">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="card-title">Kullanım</h6>
+                                            <p class="small text-muted mb-0">
+                                                XML'den gelen varyant değerlerini Odoo özellik değerlerine eşleştirin.
+                                                Örn: XML "RED" gönderiyor → Renk: Kırmızı
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="card-title">Eşleşme Türleri</h6>
+                                            <ul class="mb-0 small">
+                                                <li><strong>Tam Eşleşme:</strong> Birebir aynı</li>
+                                                <li><strong>İçerir:</strong> XML değeri hedefi içerirse</li>
+                                                <li><strong>İle Başlar:</strong> Prefix eşleşmesi</li>
+                                                <li><strong>Regex:</strong> Düzenli ifade</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+
+                        <!-- Fiyatlandırma -->
+                        <page string="Fiyatlandırma" name="pricing" icon="fa-money">
+                            <group col="4">
+                                <group colspan="2" string="Kar Marjı Ayarları">
+                                    <field name="price_markup_type" widget="radio"
+                                           options="{'horizontal': true}"/>
+                                    <field name="price_markup_percent"
+                                           invisible="price_markup_type == 'fixed'"
+                                           widget="percentage"/>
+                                    <field name="price_markup_fixed"
+                                           invisible="price_markup_type == 'percent'"
+                                           widget="monetary"/>
+                                </group>
+                                <group colspan="2" string="Fiyat Yuvarlama">
+                                    <field name="price_round" widget="boolean_toggle"/>
+                                    <field name="price_round_method" invisible="not price_round"/>
+                                </group>
+                            </group>
+
+                            <group col="4">
+                                <group colspan="2" string="Fiyat/Stok Filtreleri">
+                                    <field name="min_price" widget="monetary"/>
+                                    <field name="max_price" widget="monetary"/>
+                                    <field name="min_stock"/>
+                                </group>
+                                <group colspan="2">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body py-2">
+                                            <h6 class="card-title">Fiyat Formülü</h6>
+                                            <p class="mb-0">
+                                                <strong>Satış Fiyatı =</strong><br/>
+                                                (Tedarikçi Fiyatı × (1 + Kar%/100)) + Sabit Kar
+                                            </p>
+                                        </div>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Senkronizasyon -->
+                        <page string="Senkronizasyon" name="sync" icon="fa-sync">
+                            <group col="4">
+                                <group colspan="2" string="Otomatik Güncelleme">
+                                    <field name="auto_sync" widget="boolean_toggle"/>
+                                    <field name="sync_interval" invisible="not auto_sync"/>
+                                </group>
+                                <group colspan="2" string="İçe Aktarım Seçenekleri">
+                                    <field name="create_new_products" widget="boolean_toggle"/>
+                                    <field name="update_existing" widget="boolean_toggle"/>
+                                    <field name="update_price" widget="boolean_toggle"
+                                           invisible="not update_existing"/>
+                                    <field name="update_stock" widget="boolean_toggle"
+                                           invisible="not update_existing"/>
+                                    <field name="update_images" widget="boolean_toggle"
+                                           invisible="not update_existing"/>
+                                </group>
+                            </group>
+
+                            <group col="4">
+                                <group colspan="2" string="Ürün Eşleştirme Önceliği">
+                                    <field name="match_by_sku_prefix" widget="boolean_toggle"
+                                           help="1. SKU ilk kelimesi"/>
+                                    <field name="match_by_barcode" widget="boolean_toggle"
+                                           help="2. Barkod"/>
+                                    <field name="match_by_sku" widget="boolean_toggle"
+                                           help="3. SKU tam eşleşme"/>
+                                    <field name="match_by_description" widget="boolean_toggle"
+                                           help="4. Açıklama"/>
+                                    <field name="description_match_ratio"
+                                           invisible="not match_by_description"/>
+                                    <field name="match_by_name" widget="boolean_toggle"
+                                           help="5. İsim"/>
+                                    <field name="name_match_ratio" invisible="not match_by_name"/>
+                                </group>
+                                <group colspan="2" string="Varyant Ayarları">
+                                    <field name="create_variants" widget="boolean_toggle"/>
+                                    <field name="variant_from_parentheses" widget="boolean_toggle"
+                                           invisible="not create_variants"
+                                           help="BOLD SPEAKER (KIRMIZI) → Varyant: KIRMIZI"/>
+                                    <field name="variant_attribute_name"
+                                           invisible="not variant_from_parentheses"/>
+                                </group>
+                            </group>
+
+                            <group col="4">
+                                <group colspan="2" string="Kategori Ayarları">
+                                    <field name="update_category" widget="boolean_toggle"/>
+                                    <field name="auto_create_category" widget="boolean_toggle"
+                                           invisible="not update_category"/>
+                                    <field name="category_separator"
+                                           invisible="not auto_create_category"/>
+                                    <field name="default_category_id"
+                                           options="{'no_create': True}"/>
+                                    <field name="default_product_type"/>
+                                </group>
+                                <group colspan="2" string="Stok Politikası">
+                                    <field name="update_only_if_value" widget="boolean_toggle"
+                                           help="Boş değer gelirse mevcut değeri koru"/>
+                                    <field name="deactivate_zero_stock" widget="boolean_toggle"/>
+                                    <field name="delete_unsold_zero_stock" widget="boolean_toggle"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- SOAP Servisi Ayarları -->
+                        <page string="SOAP Ayarları" name="soap_settings" icon="fa-cloud"
+                              invisible="xml_template not in ('tesan', 'soap', 'tesan_soap')">
+                            <group col="4">
+                                <group colspan="2" string="SOAP Servisi">
+                                    <field name="soap_namespace"
+                                           placeholder="http://tempuri.org/"/>
+                                    <field name="soap_product_element"
+                                           placeholder="ProductList"/>
+                                    <field name="soap_extra_body"
+                                           placeholder="&lt;_departman&gt;0&lt;/_departman&gt;"/>
+                                </group>
+                                <group colspan="2" string="SOAP Metod Adları">
+                                    <field name="soap_method_products"
+                                           placeholder="GetProductLists"/>
+                                    <field name="soap_method_prices"
+                                           placeholder="GetStockPrices"/>
+                                    <field name="soap_method_stock"
+                                           placeholder="GetWareHouseStocks"/>
+                                    <field name="soap_method_images"
+                                           placeholder="GetProductImages"/>
+                                    <field name="soap_method_features"
+                                           placeholder="GetProductFeatures"/>
+                                    <field name="soap_method_categories"
+                                           placeholder="GetProductCategories"/>
+                                </group>
+                            </group>
+                            <div class="card bg-light mt-3">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title">SOAP Servisi Kullanımı</h6>
+                                    <ul class="mb-0 small">
+                                        <li><strong>Tesan şablonu:</strong> Tüm alanlar otomatik doldurulur</li>
+                                        <li><strong>Genel SOAP:</strong> Ürün metodu zorunlu, diğerleri opsiyonel</li>
+                                        <li><strong>Namespace:</strong> SOAP Header ve Body'deki xmlns değeri</li>
+                                        <li><strong>Ürün Elementi:</strong> SOAP yanıtındaki ürün XML element adı</li>
+                                        <li><strong>Ek Body:</strong> Ürün metodu çağrılırken gönderilecek ek parametreler</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </page>
+
+                        <!-- İçe Aktarım Logları -->
+                        <page string="İçe Aktarım Logları" name="logs" icon="fa-history">
+                            <field name="import_log_ids" readonly="1">
+                                <list decoration-success="state == 'done'"
+                                      decoration-danger="state == 'error'"
+                                      decoration-info="state == 'running'">
+                                    <field name="start_time" widget="datetime"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'done'"
+                                           decoration-danger="state == 'error'"
+                                           decoration-info="state == 'running'"/>
+                                    <field name="total_products"/>
+                                    <field name="products_created" string="Oluşturulan"/>
+                                    <field name="products_updated" string="Güncellenen"/>
+                                    <field name="products_skipped" string="Atlanan"/>
+                                    <field name="products_failed" string="Hatalı"/>
+                                    <field name="duration" string="Süre (sn)"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML KAYNAK LIST VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_product_source_tree_view" model="ir.ui.view">
+        <field name="name">xml.product.source.list</field>
+        <field name="model">xml.product.source</field>
+        <field name="arch" type="xml">
+            <list string="XML Kaynakları"
+                  decoration-muted="not active"
+                  decoration-success="state == 'active'"
+                  decoration-danger="state == 'error'">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="xml_template" optional="show"/>
+                <field name="supplier_id" optional="show"/>
+                <field name="product_count" string="Ürün"/>
+                <field name="last_sync" widget="datetime" optional="show"/>
+                <field name="next_sync" widget="datetime" optional="hide"/>
+                <field name="auto_sync" string="Oto" widget="boolean" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-danger="state == 'error'"
+                       decoration-warning="state == 'paused'"
+                       decoration-info="state == 'draft'"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML KAYNAK KANBAN VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_product_source_kanban_view" model="ir.ui.view">
+        <field name="name">xml.product.source.kanban</field>
+        <field name="model">xml.product.source</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" sample="1">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="supplier_id"/>
+                <field name="xml_template"/>
+                <field name="product_count"/>
+                <field name="last_sync"/>
+                <field name="auto_sync"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <strong class="fs-5"><field name="name"/></strong>
+                                <field name="state" widget="label_selection"
+                                       options="{'classes': {'draft': 'secondary', 'active': 'success', 'paused': 'warning', 'error': 'danger'}}"/>
+                            </div>
+
+                            <div class="text-muted small mb-2">
+                                <span class="badge bg-info me-1">
+                                    <field name="xml_template"/>
+                                </span>
+                                <t t-if="record.supplier_id.value">
+                                    <i class="fa fa-user me-1"/>
+                                    <field name="supplier_id"/>
+                                </t>
+                            </div>
+
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span>
+                                    <i class="fa fa-cubes me-1"/>
+                                    <field name="product_count"/> Ürün
+                                </span>
+                                <span>
+                                    <t t-if="record.auto_sync.raw_value">
+                                        <i class="fa fa-sync text-success me-1"/>
+                                        Otomatik
+                                    </t>
+                                    <t t-else="">
+                                        <i class="fa fa-hand-paper text-muted me-1"/>
+                                        Manuel
+                                    </t>
+                                </span>
+                            </div>
+
+                            <div class="text-muted small mt-2 border-top pt-2">
+                                <i class="fa fa-clock-o me-1"/>
+                                Son Sync: <field name="last_sync" widget="datetime"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML KAYNAK SEARCH VIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_product_source_search_view" model="ir.ui.view">
+        <field name="name">xml.product.source.search</field>
+        <field name="model">xml.product.source</field>
+        <field name="arch" type="xml">
+            <search string="XML Kaynakları">
+                <field name="name"/>
+                <field name="supplier_id"/>
+                <filter name="active_state" string="Aktif"
+                        domain="[('state', '=', 'active')]"/>
+                <filter name="archived" string="Arşivlenmiş"
+                        domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="filter_template" string="Şablona Göre"
+                        context="{'group_by': 'xml_template'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- XML KAYNAK ACTION -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="xml_product_source_action" model="ir.actions.act_window">
+        <field name="name">XML Kaynakları</field>
+        <field name="res_model">xml.product.source</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="xml_product_source_search_view"/>
+        <field name="context">{'search_default_active_state': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                İlk XML kaynağınızı ekleyin!
+            </p>
+            <p>
+                Tedarikçilerinizin XML feed'lerini ekleyerek ürünleri
+                otomatik olarak içe aktarabilirsiniz.
+            </p>
+            <p class="text-muted">
+                <strong>Desteklenen Şablonlar:</strong>
+                <ul>
+                    <li>Akinon, CIMRI, Trendyol, N11</li>
+                    <li>Google Shopping, Facebook Catalog</li>
+                    <li>Özel XML formatları</li>
+                </ul>
+            </p>
+        </field>
+    </record>
+
+</odoo>

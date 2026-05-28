@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Product Template Form View Extension - Dropship Tab -->
+    <record id="product_template_form_view_dropship" model="ir.ui.view">
+        <field name="name">product.template.form.dropship</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_information']" position="after">
+                <page string="Dropshipping" name="dropship" invisible="not is_dropship">
+                    <group>
+                        <group string="Tedarikçi Bilgileri">
+                            <field name="is_dropship"/>
+                            <field name="xml_source_id" readonly="1"/>
+                            <field name="xml_supplier_id"/>
+                            <field name="xml_supplier_sku"/>
+                            <field name="xml_supplier_url" widget="url"/>
+                        </group>
+                        <group string="Fiyat Bilgileri">
+                            <field name="xml_supplier_price"/>
+                            <field name="xml_profit" readonly="1"/>
+                            <field name="xml_profit_percent" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Stok Bilgileri">
+                            <field name="xml_supplier_stock"/>
+                            <field name="deci"/>
+                        </group>
+                        <group string="Senkronizasyon">
+                            <field name="xml_last_sync" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Görsel URL">
+                            <field name="xml_image_url" widget="url"/>
+                            <field name="xml_image_html" readonly="1" nolabel="1"/>
+                            <field name="xml_image_urls" placeholder="Her satırda bir URL"/>
+                            <button name="action_load_image_from_url" string="Görseli İndir" type="object" class="btn-secondary" invisible="not xml_image_url"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Ürün Detayları">
+                            <field name="xml_brand"/>
+                            <field name="xml_model"/>
+                            <field name="xml_warranty"/>
+                            <field name="xml_origin"/>
+                        </group>
+                        <group string="Ekstra Bilgiler">
+                            <field name="xml_extra2"/>
+                            <field name="xml_extra3"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Dropship Products Action -->
+    <record id="product_template_action_dropship" model="ir.actions.act_window">
+        <field name="name">Dropship Ürünleri</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('is_dropship', '=', True)]</field>
+        <field name="context">{'default_is_dropship': True}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz dropship ürünü bulunmuyor!
+            </p>
+            <p>
+                XML kaynaklarından ürün aktarımı yaparak dropship ürünleri oluşturabilirsiniz.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="select_path_wizard_form_view" model="ir.ui.view">
+        <field name="name">select.path.wizard.form</field>
+        <field name="model">select.path.wizard</field>
+        <field name="arch" type="xml">
+            <form string="XML Yolu Seç">
+                <group>
+                    <field name="mapping_id" invisible="1"/>
+                    <field name="source_id" invisible="1"/>
+                    <field name="path_id"/>
+                    <field name="manual_path" placeholder="Dropdown'da yoksa buraya yaz..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Uygula" class="btn-primary"/>
+                    <button special="cancel" string="İptal"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

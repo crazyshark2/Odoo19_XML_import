@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ÜRÜN ZENGİNLEŞTİRME KAYNAKLARI -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- Kaynak Form View -->
+    <record id="product_enrichment_source_form" model="ir.ui.view">
+        <field name="name">product.enrichment.source.form</field>
+        <field name="model">product.enrichment.source</field>
+        <field name="arch" type="xml">
+            <form string="Zenginleştirme Kaynağı">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="scrape_all_products" type="object"
+                                class="oe_stat_button" icon="fa-download"
+                                invisible="source_type != 'custom'">
+                            <span>Tüm Ürünleri Çek</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Kaynak Adı"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="source_type"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="last_used"/>
+                            <field name="success_count"/>
+                            <field name="fail_count"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Özel Web Sitesi Ayarları -->
+                        <page string="Web Sitesi Ayarları" invisible="source_type != 'custom'">
+                            <group>
+                                <field name="base_url" placeholder="https://example.com"/>
+                                <field name="search_url_pattern" placeholder="https://example.com/search?q={query}"/>
+                            </group>
+                        </page>
+
+                        <!-- CSS Selector'lar -->
+                        <page string="Scraping Kuralları" invisible="source_type != 'custom'">
+                            <group string="Ürün Listesi">
+                                <field name="selector_product_list" placeholder="div.product-card"/>
+                                <field name="selector_product_link" placeholder="a.product-link"/>
+                            </group>
+                            <group string="Ürün Bilgileri">
+                                <field name="selector_name" placeholder="h1.product-title"/>
+                                <field name="selector_description" placeholder="div.description"/>
+                                <field name="selector_price" placeholder="span.price"/>
+                                <field name="selector_image" placeholder="img.product-image"/>
+                            </group>
+                            <group string="Ek Bilgiler">
+                                <field name="selector_brand" placeholder="span.brand"/>
+                                <field name="selector_category" placeholder="nav.breadcrumb"/>
+                                <field name="selector_sku" placeholder="span.sku"/>
+                                <field name="selector_barcode" placeholder="span.barcode"/>
+                                <field name="selector_specs" placeholder="table.specs"/>
+                            </group>
+                        </page>
+
+                        <!-- API Ayarları -->
+                        <page string="API Ayarları" invisible="source_type not in ['google', 'amazon']">
+                            <group>
+                                <field name="api_key" password="True"/>
+                                <field name="api_secret" password="True"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Kaynak Tree View -->
+    <record id="product_enrichment_source_tree" model="ir.ui.view">
+        <field name="name">product.enrichment.source.tree</field>
+        <field name="model">product.enrichment.source</field>
+        <field name="arch" type="xml">
+            <list string="Zenginleştirme Kaynakları">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="source_type"/>
+                <field name="base_url"/>
+                <field name="last_used"/>
+                <field name="success_count"/>
+                <field name="fail_count"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Kaynak Action -->
+    <record id="action_product_enrichment_source" model="ir.actions.act_window">
+        <field name="name">Zenginleştirme Kaynakları</field>
+        <field name="res_model">product.enrichment.source</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ZENGİNLEŞTİRME LOGLARI -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="product_enrichment_log_tree" model="ir.ui.view">
+        <field name="name">product.enrichment.log.tree</field>
+        <field name="model">product.enrichment.log</field>
+        <field name="arch" type="xml">
+            <list string="Zenginleştirme Logları">
+                <field name="create_date"/>
+                <field name="product_id"/>
+                <field name="source_id"/>
+                <field name="search_query"/>
+                <field name="status" decoration-success="status == 'success'"
+                       decoration-warning="status == 'partial'"
+                       decoration-danger="status in ['not_found', 'error']"/>
+                <field name="fields_updated"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_product_enrichment_log" model="ir.actions.act_window">
+        <field name="name">Zenginleştirme Geçmişi</field>
+        <field name="res_model">product.enrichment.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ZENGİNLEŞTİRME WIZARD -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="product_enrichment_wizard_form" model="ir.ui.view">
+        <field name="name">product.enrichment.wizard.form</field>
+        <field name="model">product.enrichment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Ürün Zenginleştir">
+                <!-- Arama Durumu -->
+                <group invisible="state != 'search'">
+                    <group>
+                        <field name="product_id" readonly="1"/>
+                        <field name="search_query"/>
+                    </group>
+                    <group>
+                        <field name="source_ids" widget="many2many_checkboxes"/>
+                    </group>
+                </group>
+
+                <!-- Sonuçlar Durumu -->
+                <group invisible="state != 'results'">
+                    <group string="Güncelleme Seçenekleri">
+                        <field name="update_name"/>
+                        <field name="update_description"/>
+                        <field name="update_image"/>
+                        <field name="update_price"/>
+                    </group>
+                </group>
+
+                <field name="result_ids" invisible="state != 'results'">
+                    <list string="Sonuçlar" editable="bottom">
+                        <field name="source_id"/>
+                        <field name="name"/>
+                        <field name="brand"/>
+                        <field name="price"/>
+                        <field name="source_url" widget="url"/>
+                    </list>
+                </field>
+
+                <field name="selected_result_id" invisible="state != 'results'"
+                       options="{'no_create': True}" domain="[('wizard_id', '=', id)]"/>
+
+                <!-- Tamamlandı Durumu -->
+                <div invisible="state != 'done'" class="alert alert-success">
+                    <strong>Ürün başarıyla zenginleştirildi!</strong>
+                </div>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_search" type="object" string="Ara"
+                            class="btn-primary" invisible="state != 'search'"/>
+                    <button name="action_apply" type="object" string="Uygula"
+                            class="btn-primary" invisible="state != 'results'"/>
+                    <button name="action_back" type="object" string="Geri"
+                            invisible="state == 'search'"/>
+                    <button string="Kapat" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- TOPLU AKTARIM WIZARD -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="product_enrichment_import_wizard_form" model="ir.ui.view">
+        <field name="name">product.enrichment.import.wizard.form</field>
+        <field name="model">product.enrichment.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Web Sitesi Ürün Aktarımı">
+                <!-- Yapılandırma -->
+                <group invisible="state != 'config'">
+                    <group string="Kaynak">
+                        <field name="source_id"/>
+                        <field name="import_url" placeholder="https://site.com/products"/>
+                        <field name="max_products"/>
+                    </group>
+                    <group string="Seçenekler">
+                        <field name="create_new"/>
+                        <field name="update_existing"/>
+                        <field name="match_by"/>
+                    </group>
+                </group>
+
+                <!-- Önizleme -->
+                <group invisible="state != 'preview'">
+                    <field name="preview_text" readonly="1" nolabel="1"
+                           widget="text" style="font-family: monospace;"/>
+                </group>
+
+                <!-- Sonuç -->
+                <group invisible="state != 'done'">
+                    <div class="alert alert-success">
+                        <field name="result_text" readonly="1" nolabel="1"/>
+                    </div>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_preview" type="object" string="Önizle"
+                            class="btn-primary" invisible="state != 'config'"/>
+                    <button name="action_import" type="object" string="Aktar"
+                            class="btn-primary" invisible="state != 'preview'"/>
+                    <button name="action_back" type="object" string="Geri"
+                            invisible="state == 'config'"/>
+                    <button string="Kapat" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ÜRÜN FORMUNA BUTON EKLE -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <record id="product_template_enrichment_form" model="ir.ui.view">
+        <field name="name">product.template.enrichment.form.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_enrich_product" type="object"
+                        class="oe_stat_button" icon="fa-magic">
+                    <span>Zenginleştir</span>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='purchase']" position="after">
+                <page string="Zenginleştirme" name="enrichment">
+                    <group>
+                        <group>
+                            <field name="last_enrichment_date"/>
+                            <field name="enrichment_source"/>
+                            <field name="auto_enrich"/>
+                        </group>
+                    </group>
+                    <field name="enrichment_log_ids" readonly="1">
+                        <list>
+                            <field name="create_date"/>
+                            <field name="source_id"/>
+                            <field name="search_query"/>
+                            <field name="status"/>
+                            <field name="fields_updated"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- MENÜ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <menuitem id="menu_product_enrichment"
+              name="Ürün Zenginleştirme"
+              parent="mobilsoft_xml_import_menu_root"
+              sequence="25"/>
+
+    <menuitem id="menu_enrichment_sources"
+              name="Kaynaklar"
+              parent="menu_product_enrichment"
+              action="action_product_enrichment_source"
+              sequence="10"/>
+
+    <menuitem id="menu_enrichment_logs"
+              name="Geçmiş"
+              parent="menu_product_enrichment"
+              action="action_product_enrichment_log"
+              sequence="20"/>
+
+</odoo>

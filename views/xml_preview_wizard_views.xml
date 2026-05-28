@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="xml_preview_wizard_form_view" model="ir.ui.view">
+        <field name="name">xml.preview.wizard.form</field>
+        <field name="model">xml.preview.wizard</field>
+        <field name="arch" type="xml">
+            <form string="XML Önizleme">
+                <sheet>
+                    <notebook>
+                        <page string="XML Verisi" name="raw">
+                            <field name="raw_view" nolabel="1"/>
+                        </page>
+                        <page string="Özet" name="structured">
+                            <field name="structured_view" nolabel="1"/>
+                        </page>
+                        <page string="XML Yolları" name="paths">
+                            <field name="paths_view" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button string="Kapat" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="xml_preview_wizard_action" model="ir.actions.act_window">
+        <field name="name">XML Önizleme</field>
+        <field name="res_model">xml.preview.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="xml_preview_wizard_form_view"/>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

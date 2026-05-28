@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="xml_variant_mapping_tree_view" model="ir.ui.view">
+        <field name="name">xml.variant.mapping.tree</field>
+        <field name="model">xml.variant.mapping</field>
+        <field name="arch" type="xml">
+            <list string="Varyant Özellik Eşleştirmeleri" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="xml_variant_value" placeholder="KIRMIZI"/>
+                <field name="xml_attribute_name" placeholder="Çerçeve (ops.)" optional="hide"/>
+                <field name="match_type"/>
+                <field name="attribute_id" options="{'no_create': True}"/>
+                <field name="attribute_value_id" options="{'no_create': True}"
+                       domain="[('attribute_id', '=', attribute_id)]"/>
+                <field name="allow_create_value" widget="boolean_toggle"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="xml_variant_mapping_form_view" model="ir.ui.view">
+        <field name="name">xml.variant.mapping.form</field>
+        <field name="model">xml.variant.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Varyant Özellik Eşleştirmesi">
+                <sheet>
+                    <group col="4">
+                        <group colspan="2" string="Eşleştirme Bilgileri">
+                            <field name="source_id" invisible="1"/>
+                            <field name="sequence"/>
+                            <field name="xml_variant_value"
+                                   placeholder="XML'den gelen değer (örn: RED, S, Mavi)"/>
+                            <field name="xml_attribute_name"
+                                   placeholder="XML'deki özellik adı (opsiyonel)"/>
+                            <field name="match_type"/>
+                        </group>
+                        <group colspan="2" string="Odoo Özellik Değeri">
+                            <field name="attribute_id" options="{'no_create': True}"/>
+                            <field name="attribute_value_id" options="{'no_create': True}"
+                                   domain="[('attribute_id', '=', attribute_id)]"/>
+                            <field name="allow_create_value" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <div class="card bg-light mt-3">
+                        <div class="card-body py-2">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="card-title">Kullanım</h6>
+                                    <p class="small text-muted mb-0">
+                                        XML'den gelen varyant değerini sol tarafta girin,
+                                        sağ tarafta eşleşecek Odoo özelliğini ve değerini seçin.
+                                        Örn: XML'de "RED" geliyor → Özellik "Renk", Değer "Kırmızı"
+                                    </p>
+                                    <p class="small text-muted mt-2 mb-0">
+                                        <strong>İç içe varyant yapısı:</strong><br/>
+                                        <code>&lt;Attribute&gt;&lt;Name&gt;Çerçeve&lt;/Name&gt;&lt;Value&gt;Köşeli&lt;/Value&gt;&lt;/Attribute&gt;</code><br/>
+                                        gibi bir yapıda "XML Özellik Adı" alanını "Çerçeve" olarak doldurun.
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="card-title">Eşleşme Türleri</h6>
+                                    <ul class="mb-0 small">
+                                        <li><strong>Tam Eşleşme:</strong> Birebir aynı</li>
+                                        <li><strong>İçerir:</strong> XML değeri hedefi içerirse</li>
+                                        <li><strong>İle Başlar:</strong> Prefix eşleşmesi</li>
+                                        <li><strong>Regex:</strong> Düzenli ifade</li>
+                                    </ul>
+                                    <p class="small text-muted mt-2 mb-0">
+                                        <strong>Değer Yoksa Oluştur:</strong> Eşleşen değer bulunamazsa
+                                        otomatik olarak yeni attribute değeri oluşturulur.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
