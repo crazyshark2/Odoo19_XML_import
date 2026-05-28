@@ -2038,6 +2038,14 @@ class XmlProductSource(models.Model):
                             'xml_attribute_names': [],
                             'resolved': bool(attribute),
                         }
+                    elif variant_attrs[attr_key]['values'] and not variant_attrs[attr_key]['xml_attribute_names']:
+                        # Flat (value-only) mapping daha önce bu attribute'a değer eklemişse
+                        # nested Name/Value çiftleri daha doğru olduğu için onları temizle
+                        _logger.info("DEBUG   clearing flat values for attr_key=%s (attribute=%s): old_values=%s, replacing with nested value=%s",
+                                     attr_key, attribute.name if attribute else None,
+                                     variant_attrs[attr_key]['values'], attr_value)
+                        variant_attrs[attr_key]['values'] = []
+                        variant_attrs[attr_key]['xml_attribute_names'] = []
                     variant_attrs[attr_key]['values'].append(attr_value)
                     variant_attrs[attr_key]['xml_attribute_names'].append(attr_name)
                 _logger.info("DEBUG _apply_variant_overrides: variant_attrs keys after nested: %s", list(variant_attrs.keys()))
@@ -2045,10 +2053,44 @@ class XmlProductSource(models.Model):
                     _logger.info("DEBUG   key=%s: attribute=%s, values=%s, names=%s",
                                  k, v.get('attribute') and v['attribute'].name, v['values'], v['xml_attribute_names'])
             else:
-                value = self._get_element_value(v_elem, rel_path)
+                attr_id = mapping.variant_attribute_id
+                value = None
+
+                # Otomatik Name/Value eşleştirme: mapping'de subpath yoksa,
+                # parent element'te <Attribute><Name>...</Name><Value>...</Value>
+                # yapısını ara ve attribute adına göre doğru Value'yu seç
+                if attr_id:
+                    parent_path = '/'.join(rel_path.split('/')[:-1])
+                    if parent_path:
+                        current = v_elem
+                        for part in parent_path.split('/'):
+                            if current is None:
+                                break
+                            found = current.find(part)
+                            if found is None:
+                                for child in current:
+                                    if child.tag.lower() == part.lower():
+                                        found = child
+                                        break
+                            current = found
+                        if current is not None:
+                            for child in list(current):
+                                name_el = child.find('Name') or next(
+                                    (c for c in child if c.tag.lower() == 'name'), None
+                                )
+                                value_el = child.find('Value') or next(
+                                    (c for c in child if c.tag.lower() == 'value'), None
+                                )
+                                if (name_el is not None and name_el.text and
+                                    value_el is not None and value_el.text and
+                                    name_el.text.strip().lower() == attr_id.name.lower()):
+                                    value = value_el.text.strip()
+                                    break
+
+                if not value:
+                    value = self._get_element_value(v_elem, rel_path)
                 if value and isinstance(value, str) and value.strip():
                     variant_attrs = data.setdefault('_variant_attrs', {})
-                    attr_id = mapping.variant_attribute_id
                     attr_key = attr_id.id if attr_id else f'_raw_{mapping.xml_path}'
                     if attr_key not in variant_attrs:
                         variant_attrs[attr_key] = {
@@ -3551,6 +3593,10 @@ class XmlProductSource(models.Model):
                     applied = True
 
         if applied:
+            # create_variants açıkken yeni varyant kayıtları oluştur
+            if self.create_variants and hasattr(product_tmpl, 'create_variant_ids'):
+                product_tmpl.create_variant_ids()
+            self.env.cr.flush()
             product_tmpl.invalidate_recordset()
         return applied
 
@@ -3562,15 +3608,17 @@ class XmlProductSource(models.Model):
         """
         variant_attrs = data.get('_variant_attrs', {})
         if not variant_attrs:
+            _logger.warning("DEBUG _find_variant_by_attrs: no _variant_attrs in data")
             return None
 
-        # Hedef: her attribute_id için beklenen value_id seti
         target_attr_values = {}
         for attr_info in variant_attrs.values():
             if not attr_info.get('resolved', True):
+                _logger.warning("DEBUG _find_variant_by_attrs: skipping unresolved attr_info: %s", attr_info)
                 continue
             attribute = attr_info.get('attribute')
             if not attribute:
+                _logger.warning("DEBUG _find_variant_by_attrs: attr_info has no attribute: %s", attr_info)
                 continue
             for idx, xml_value in enumerate(attr_info['values']):
                 xml_attr_names = attr_info.get('xml_attribute_names', [])
@@ -3585,11 +3633,18 @@ class XmlProductSource(models.Model):
                     ], limit=1)
                 if attr_value:
                     target_attr_values.setdefault(attribute.id, set()).add(attr_value.id)
+                else:
+                    _logger.warning("DEBUG _find_variant_by_attrs: could not find value for attr=%s xml_value=%s",
+                                    attribute.name, xml_value)
 
         if not target_attr_values:
+            _logger.warning("DEBUG _find_variant_by_attrs: no target_attr_values built from variant_attrs")
             return None
 
-        # Tüm varyantları tara, eşleşeni bul
+        _logger.info("DEBUG _find_variant_by_attrs: target_attr_values=%s, total_variants=%s",
+                     {attr_id: list(vals) for attr_id, vals in target_attr_values.items()},
+                     len(product_tmpl.product_variant_ids))
+
         for variant in product_tmpl.product_variant_ids:
             variant_ptavs = variant.product_template_attribute_value_ids
             variant_attr_values = {}
@@ -3598,9 +3653,12 @@ class XmlProductSource(models.Model):
                 val_id = ptav.product_attribute_value_id.id
                 variant_attr_values.setdefault(attr_id, set()).add(val_id)
 
+            _logger.info("DEBUG _find_variant_by_attrs: checking variant id=%s attrs=%s",
+                         variant.id, {attr_id: list(vals) for attr_id, vals in variant_attr_values.items()})
             if variant_attr_values == target_attr_values:
                 return variant
 
+        _logger.warning("DEBUG _find_variant_by_attrs: no matching variant found")
         return None
 
     def _create_color_variant(self, product_tmpl, variant_name, data, cost_price):
@@ -3729,7 +3787,7 @@ class XmlProductSource(models.Model):
             raise UserError(_('Bağlantı hatası: %s') % str(e))
 
     def _xml_structure_preview(self, element, max_depth=3):
-        """XML element yapısını göster - içeriksiz, sadece tag hiyerarşisi"""
+        """XML element yapısını göster - derinlik aşıldığında çocuk tagları ve değerleri göster"""
         lines = []
         tag = element.tag.split('}')[-1]
         children = list(element)
@@ -3753,7 +3811,32 @@ class XmlProductSource(models.Model):
                     for cl in self._xml_structure_preview(child, max_depth - 1):
                         lines.append(f"  {cl}")
             elif children:
-                lines.append(f"  ... ({len(children)} alt element)")
+                child_parts = []
+                for child in children[:5]:
+                    c_tag = child.tag.split('}')[-1]
+                    c_children = list(child)
+                    c_text = (child.text or '').strip()[:20]
+                    if not c_children and c_text:
+                        child_parts.append(f"<{c_tag}>{c_text}...</{c_tag}>")
+                    elif c_children:
+                        gc_parts = []
+                        for gc in c_children[:3]:
+                            gc_tag = gc.tag.split('}')[-1]
+                            gc_text = (gc.text or '').strip()[:20]
+                            if gc_text:
+                                gc_parts.append(f"<{gc_tag}>{gc_text}...</{gc_tag}>")
+                            else:
+                                gc_parts.append(f"<{gc_tag}/>")
+                        rest = len(c_children) - 3
+                        if rest > 0:
+                            gc_parts.append(f"...+{rest}")
+                        child_parts.append(f"<{c_tag}> {' '.join(gc_parts)} </{c_tag}>")
+                    else:
+                        child_parts.append(f"<{c_tag}/>")
+                rest = len(children) - 5
+                if rest > 0:
+                    child_parts.append(f"...+{rest}")
+                lines.append(f"  {' '.join(child_parts)}")
             lines.append(f"</{tag}>")
         return lines
 
@@ -4079,21 +4162,22 @@ class XmlProductSource(models.Model):
                             should_create_variant = False
                             variant_identifier = None
 
-                            if usage_class == 'commercial' and self.create_variants:
+                            if usage_class == 'commercial':
                                 if data.get('_variant_attrs'):
-                                    # Field mapping'den gelen varyant - doğrudan işle
+                                    # Field mapping'den gelen varyant - her zaman işle
+                                    # (create_variants kapalı olsa bile mevcut varyantı güncelle)
                                     should_create_variant = True
                                     variant_identifier = name
-                                elif self.variant_from_parentheses and variant_name:
+                                elif self.create_variants and self.variant_from_parentheses and variant_name:
                                     should_create_variant = True
                                     variant_identifier = variant_name
-                                elif data.get('variant_group'):
+                                elif self.create_variants and data.get('variant_group'):
                                     base_by_group = self._find_base_product_by_variant_group(data['variant_group'])
                                     if base_by_group and base_by_group != existing:
                                         existing = base_by_group
                                         should_create_variant = True
                                         variant_identifier = name
-                                elif data.get('barcode'):
+                                elif self.create_variants and data.get('barcode'):
                                     item_sku = str(data.get('sku', '')).strip()
                                     base_by_sku = self._find_base_product_by_sku_prefix(item_sku) if item_sku else None
                                     if base_by_sku and base_by_sku != existing:
@@ -4226,7 +4310,8 @@ class XmlProductSource(models.Model):
         # ═══════════════════════════════════════════════════════════════
         variant_group = data.get('variant_group')
 
-        if usage_class == 'commercial' and self.create_variants and data.get('barcode'):
+        # _variant_attrs field mapping'den geldiyse standard barcode varyant modunu atla
+        if usage_class == 'commercial' and self.create_variants and data.get('barcode') and not data.get('_variant_attrs'):
             base_by_variant_group = self._find_base_product_by_variant_group(variant_group) if variant_group else None
             base_by_sku_prefix = self._find_base_product_by_sku_prefix(sku) if sku else None
 
@@ -4357,6 +4442,7 @@ class XmlProductSource(models.Model):
         product = self.env['product.template'].create(vals)
 
         # Varyant attribute'larını uygula (field mapping'den geliyorsa)
+        # create_variants kapalı olsa bile attribute line'ları ekle (mevcut varyant eşleşmesi için)
         if data.get('_variant_attrs'):
             self._apply_variant_attrs_to_template(product, data)
             product.invalidate_recordset()
@@ -4486,6 +4572,12 @@ class XmlProductSource(models.Model):
                 'attribute_id': barcode_attr.id,
                 'value_ids': [(6, 0, [attr_value.id])],
             })
+
+        # Varyantları oluştur ve önbelleği temizle
+        if hasattr(product_tmpl, 'create_variant_ids'):
+            product_tmpl.create_variant_ids()
+        self.env.cr.flush()
+        product_tmpl.invalidate_recordset()
 
         # Yeni varyantı bul ve güncelle
         new_variant = self.env['product.product'].search([
