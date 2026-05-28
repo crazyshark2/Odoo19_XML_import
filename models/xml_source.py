@@ -2003,6 +2003,19 @@ class XmlProductSource(models.Model):
             _logger.info("DEBUG _apply_variant_overrides: mapping=%s, rel_path=%s, has_subpaths=%s",
                          mapping.xml_path, rel_path, bool(mapping.variant_name_subpath and mapping.variant_value_subpath))
             if mapping.variant_name_subpath and mapping.variant_value_subpath:
+                # Otomatik düzeltme: XML Yolu "Name" veya "Value" ile bitiyorsa,
+                # parent element'e (Attribute) çek. Kullanıcı yanlışlıkla son parçayı
+                # seçmiş olabilir; Name/Value alt öğelerinin parent'ı kullanılmalı.
+                path_parts = rel_path.split('/')
+                if path_parts and path_parts[-1].lower() in ('name', 'value'):
+                    corrected = '/'.join(path_parts[:-1])
+                    _logger.warning(
+                        "XML yolu '%s' '%s' ile bitiyor. Varyant attributeları için "
+                        "parent path '%s' kullanıldı (subpath: Name/Value). "
+                        "Lütfen field mapping'de XML Yolu'nu '%s' olarak düzeltin.",
+                        mapping.xml_path, path_parts[-1], corrected, corrected
+                    )
+                    rel_path = corrected
                 pairs = self._get_nested_variant_attributes(
                     v_elem, mapping, override_path=rel_path
                 )
@@ -2057,10 +2070,17 @@ class XmlProductSource(models.Model):
                 value = None
 
                 # Otomatik Name/Value eşleştirme: mapping'de subpath yoksa,
-                # parent element'te <Attribute><Name>...</Name><Value>...</Value>
-                # yapısını ara ve attribute adına göre doğru Value'yu seç
+                # <Attribute> altındaki <Name>/<Value> çiftlerini bul ve attribute
+                # adına göre doğru Value'yu seç. Varyant attribute için XML yolu
+                # .../Attribute/Value formatındadır.
                 if attr_id:
-                    parent_path = '/'.join(rel_path.split('/')[:-1])
+                    parts = rel_path.split('/')
+                    # Path .../Name veya .../Value ile bitiyorsa 2 seviye yukarı
+                    # (.../Attribute/Name → .../VariantAttributes), yoksa 1 seviye
+                    if len(parts) >= 2 and parts[-1].lower() in ('name', 'value'):
+                        parent_path = '/'.join(parts[:-2])
+                    else:
+                        parent_path = '/'.join(parts[:-1])
                     if parent_path:
                         current = v_elem
                         for part in parent_path.split('/'):
@@ -2086,7 +2106,6 @@ class XmlProductSource(models.Model):
                                     name_el.text.strip().lower() == attr_id.name.lower()):
                                     value = value_el.text.strip()
                                     break
-
                 if not value:
                     value = self._get_element_value(v_elem, rel_path)
                 if value and isinstance(value, str) and value.strip():
