@@ -26,6 +26,7 @@ class XmlFieldMapping(models.Model):
         ('barcode', 'Barkod'),
         ('name', 'Ürün Adı'),
         ('description', 'Açıklama'),
+        ('description_ecommerce', 'E-ticaret Açıklaması'),
         ('description_short', 'Kısa Açıklama'),
         ('price', 'Satış Fiyatı'),
         ('cost_price', 'Maliyet/Tedarikçi Fiyatı'),

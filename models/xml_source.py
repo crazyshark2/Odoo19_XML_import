@@ -14,6 +14,12 @@ import time
 from difflib import SequenceMatcher
 from io import BytesIO
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+import urllib3
+from warnings import filterwarnings
+
+# verify=False SSL uyarılarını kapat (görsel indirme için)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+filterwarnings('ignore', message='.*Unverified HTTPS.*')
 
 _logger = logging.getLogger(__name__)
 
@@ -75,6 +81,7 @@ class XmlProductSource(models.Model):
     # XML Yapısı
     xml_template = fields.Selection([
         ('tsoft', 'T-Soft'),
+        ('deneme', 'Deneme'),
         ('ticimax', 'Ticimax'),
         ('ideasoft', 'IdeaSoft'),
         ('akinsoft', 'Akinsoft (Wolvox)'),
@@ -415,6 +422,7 @@ class XmlProductSource(models.Model):
         """Şablon değiştiğinde varsayılan mapping'leri ayarla"""
         template_roots = {
             'tsoft': 'product',
+            'deneme': '//Product',
             'ticimax': '//Products/Product',
             'ideasoft': '//ProductList/Product',
             'akinsoft': '//urun',
@@ -465,6 +473,18 @@ class XmlProductSource(models.Model):
                 'model': 'model',
                 'currency': 'currency',
                 'tax': 'tax',
+            },
+            'deneme': {
+                'sku': 'MainCode',
+                'name': 'ProductName',
+                'description': 'Description',
+                'description_ecommerce': 'Description',
+                'category': 'Category',
+                'brand': 'Brand',
+                'currency': 'Currency',
+                'tax': 'Tax',
+                'barcode': 'Variants/Variant/Barcode',
+                'image': 'Variants/Variant/Images/Image',
             },
             'ticimax': {
                 'sku': 'ProductCode',
@@ -1993,6 +2013,9 @@ class XmlProductSource(models.Model):
             data['image'] = images[0]
             if len(images) > 1:
                 data['extra_images'] = images[1:]
+        _logger.info("DEBUG _apply_variant_overrides: images=%d, image=%s, extra=%d",
+                     len(images), data.get('image')[:50] if data.get('image') else None,
+                     len(data.get('extra_images', [])))
 
         # Varyant attribute'larını v_elem'den çıkar (doğru varyanta ait değerler)
         # _extract_product_data her zaman product element'inden okur → ilk varyant
@@ -2095,12 +2118,16 @@ class XmlProductSource(models.Model):
                             current = found
                         if current is not None:
                             for child in list(current):
-                                name_el = child.find('Name') or next(
-                                    (c for c in child if c.tag.lower() == 'name'), None
-                                )
-                                value_el = child.find('Value') or next(
-                                    (c for c in child if c.tag.lower() == 'value'), None
-                                )
+                                name_el = child.find('Name')
+                                if name_el is None:
+                                    name_el = next(
+                                        (c for c in child if c.tag.lower() == 'name'), None
+                                    )
+                                value_el = child.find('Value')
+                                if value_el is None:
+                                    value_el = next(
+                                        (c for c in child if c.tag.lower() == 'value'), None
+                                    )
                                 if (name_el is not None and name_el.text and
                                     value_el is not None and value_el.text and
                                     name_el.text.strip().lower() == attr_id.name.lower()):
@@ -2524,25 +2551,31 @@ class XmlProductSource(models.Model):
 
             value = self._get_element_value(element, mapping.xml_path)
 
+            if mapping.odoo_field in ('image', 'image2', 'image3', 'image4'):
+                all_values = self._get_element_values(element, mapping.xml_path)
+                if all_values:
+                    for candidate in all_values:
+                        if candidate and candidate.startswith('http'):
+                            image_values.append(candidate)
+                elif isinstance(value, str) and value:
+                    for candidate in value.split(','):
+                        candidate = candidate.strip()
+                        if candidate and candidate.startswith('http'):
+                            image_values.append(candidate)
+                continue
+
+            elif mapping.odoo_field == 'images':
+                all_images = self._get_element_values(element, mapping.xml_path)
+                for candidate in all_images:
+                    if candidate and str(candidate).startswith('http'):
+                        image_values.append(str(candidate).strip())
+                continue
+
             if value:
                 if mapping.transform:
                     value = mapping.apply_transform(value)
 
-                if mapping.odoo_field in ('image', 'image2', 'image3', 'image4'):
-                    if isinstance(value, str):
-                        for candidate in value.split(','):
-                            candidate = candidate.strip()
-                            if candidate and candidate.startswith('http'):
-                                image_values.append(candidate)
-                    continue
-
-                elif mapping.odoo_field == 'images':
-                    all_images = self._get_element_values(element, mapping.xml_path)
-                    for candidate in all_images:
-                        if candidate and str(candidate).startswith('http'):
-                            image_values.append(str(candidate).strip())
-
-                elif mapping.odoo_field == 'variant_attribute':
+                if mapping.odoo_field == 'variant_attribute':
                     # Flat (basit) varyant: direkt XML yoluyla değer oku
                     # Path 'Variants/Variant/...' ile başlıyorsa atla,
                     # _apply_variant_overrides v_elem'den doğru değeri okur.
@@ -2641,12 +2674,6 @@ class XmlProductSource(models.Model):
             if self.xml_template == 'akinsoft':
                 image_paths.extend([f'GORSEL{i}' for i in range(1, 11)])
             for path in image_paths:
-                # Önce tekli, sonra çoklu dene
-                img_val = self._get_element_value(element, path)
-                if img_val and img_val.startswith('http'):
-                    data['image'] = img_val
-                    break
-                # Çoklu görsel dene
                 all_imgs = self._get_element_values(element, path)
                 if all_imgs:
                     data['image'] = all_imgs[0]
@@ -2929,30 +2956,38 @@ class XmlProductSource(models.Model):
         if not url:
             return None
 
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'image/*,*/*',
+        }
+
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'image/*,*/*',
-            }
-            response = requests.get(url, headers=headers, timeout=30, stream=True)
+            response = requests.get(
+                url, headers=headers, timeout=30, stream=True,
+                verify=False,
+            )
             response.raise_for_status()
 
-            # İçerik tipi kontrolü
             content_type = response.headers.get('Content-Type', '')
             if not any(t in content_type for t in ['image', 'octet-stream']):
                 _logger.warning(f"Geçersiz görsel tipi: {content_type} - {url}")
                 return None
 
-            # Boyut kontrolü (max 10MB)
-            content_length = response.headers.get('Content-Length')
-            if content_length and int(content_length) > 10 * 1024 * 1024:
-                _logger.warning(f"Görsel çok büyük: {content_length} bytes - {url}")
-                return None
+            # Streaming ile oku (büyük dosyalar için memory safe)
+            chunks = []
+            total = 0
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    chunks.append(chunk)
+                    total += len(chunk)
+                    if total > 10 * 1024 * 1024:
+                        _logger.warning(f"Görsel 10MB limiti aştı (stream): {url}")
+                        return None
 
-            # Base64'e çevir
-            image_data = base64.b64encode(response.content).decode('utf-8')
+            content = b''.join(chunks)
+            image_data = base64.b64encode(content).decode('utf-8')
 
-            _logger.debug(f"Görsel indirildi: {url}")
+            _logger.debug(f"Görsel indirildi: {url} ({total} bytes)")
             return image_data
 
         except requests.exceptions.RequestException as e:
@@ -3481,7 +3516,7 @@ class XmlProductSource(models.Model):
         vals = {
             'name': base_name,
             'default_code': base_sku if base_sku else None,
-            'description_sale': data.get('description'),
+            'description_ecommerce': data.get('description'),
             'list_price': sale_price,
             'standard_price': cost_price or 0,
             'xml_source_id': self.id,
@@ -3503,11 +3538,31 @@ class XmlProductSource(models.Model):
             if default_category:
                 vals['categ_id'] = default_category.id
 
+        # Açıklama
+        if data.get('description'):
+            description = self._clean_html(data['description'])
+            vals['description_ecommerce'] = description
+            vals['description'] = description
+
+        # Görsel (her zaman indir, e-ticaret sayfası için)
+        if data.get('image'):
+            image_url = data.get('image')
+            vals['xml_image_url'] = image_url
+            image_data = self._download_image(image_url)
+            if image_data:
+                vals['image_1920'] = image_data
+
         # Tedarikçi
         if self.supplier_id:
             vals['xml_supplier_id'] = self.supplier_id.id
 
         product = Product.create(vals)
+
+        # Ek görseller
+        if data.get('extra_images'):
+            product_variant = product.product_variant_ids[:1] if product.product_variant_ids else None
+            self._add_extra_images(product, data.get('extra_images'), product_variant=product_variant)
+
         _logger.info(f"Ana ürün oluşturuldu: {base_name}")
 
         return product
@@ -4361,7 +4416,7 @@ class XmlProductSource(models.Model):
             'name': data.get('name'),
             'default_code': data.get('sku'),
             'barcode': data.get('barcode'),
-            'description_sale': data.get('description'),
+            'description_ecommerce': data.get('description'),
             'list_price': sale_price,
             'standard_price': cost_price,
             # Dropshipping alanları
@@ -4373,22 +4428,20 @@ class XmlProductSource(models.Model):
         }
         vals.update(self._normalized_product_defaults(data))
 
-        # Görsel
+        # Görsel (her zaman indir, e-ticaret sayfası için image_1920 doldurulsun)
         if data.get('image'):
             image_url = data.get('image')
             vals['xml_image_url'] = image_url
-            # Görseli indir veya URL olarak ekle
-            if self.download_images:
-                image_data = self._download_image(image_url)
-                if image_data:
-                    vals['image_1920'] = image_data
+            image_data = self._download_image(image_url)
+            if image_data:
+                vals['image_1920'] = image_data
 
         # Açıklama
         if data.get('description'):
             description = data.get('description')
             # HTML temizleme (opsiyonel)
             description = self._clean_html(description)
-            vals['description_sale'] = description
+            vals['description_ecommerce'] = description
             vals['description'] = description
 
         # Kısa açıklama → teslim notu alanı
@@ -4462,23 +4515,23 @@ class XmlProductSource(models.Model):
 
         # Varyant attribute'larını uygula (field mapping'den geliyorsa)
         # create_variants kapalı olsa bile attribute line'ları ekle (mevcut varyant eşleşmesi için)
+        product_variant = None
         if data.get('_variant_attrs'):
             self._apply_variant_attrs_to_template(product, data)
             product.invalidate_recordset()
             matching_variant = self._find_variant_by_attrs(product, data)
-            if matching_variant and data.get('barcode'):
-                matching_variant.write({'barcode': data['barcode']})
+            if matching_variant:
+                product_variant = matching_variant
+                if data.get('barcode'):
+                    matching_variant.write({'barcode': data['barcode']})
+            elif product.product_variant_ids:
+                product_variant = product.product_variant_ids[0]
+        elif product.product_variant_ids:
+            product_variant = product.product_variant_ids[0]
 
-        # Görsel URL olarak ekle (indirmeden)
-        if data.get('image') and not self.download_images:
-            self._set_image_from_url(product, data.get('image'))
-
-        # Ek görseller ekle
+        # Ek görseller (her zaman indir)
         if data.get('extra_images'):
-            if self.download_images:
-                self._add_extra_images(product, data.get('extra_images'))
-            else:
-                self._add_extra_images_from_url(product, data.get('extra_images'))
+            self._add_extra_images(product, data.get('extra_images'), product_variant=product_variant)
 
         # Dropship rotası ekle (stock_dropshipping modülü)
         dropship_route = self.env.ref('stock_dropshipping.route_drop_shipping', raise_if_not_found=False)
@@ -4491,30 +4544,110 @@ class XmlProductSource(models.Model):
 
         return product
 
-    def _add_extra_images(self, product, image_urls):
-        """Ürüne ek görseller ekle"""
+    def _get_extra_image_model(self):
+        """Runtime model discovery: Odoo 19'da ek ürün görsel modelini dinamik bul
+
+        Önce registry'deki tüm image modellerini loglar,
+        ardından candidate adları 'in self.env' ile dener.
+
+        Returns:
+            model object or None
+        """
+        # Tüm image modellerini logla (debug amaçlı)
+        image_models = [
+            name for name in self.env.registry.models.keys()
+            if 'image' in name.lower()
+        ]
+        _logger.info("Registry'de bulunan image modelleri: %s", image_models)
+
+        # candidate adlarını 'model_name in self.env' ile dene (self.env.get()'den daha güvenilir)
+        known_candidates = [
+            'product.image',
+            'product.images',
+            'website.image',
+            'mobilsoft.product.image',
+            'product.product.image',
+            'product.product.images',
+        ]
+        for candidate in known_candidates:
+            if candidate in self.env:
+                model = self.env[candidate]
+                _logger.info("Image model bulundu: %s", candidate)
+                return model
+
+        # Bilinen adlar yoksa wildcard: image_1920 alanı olan tüm modelleri dene
+        for name in image_models:
+            if name in self.env:
+                model = self.env[name]
+                if 'image_1920' in model._fields:
+                    _logger.info("Image model bulundu (wildcard): %s", name)
+                    return model
+
+        _logger.error("Hiçbir image modeli bulunamadı! "
+                      "image_1920 alanı olan modeller: %s",
+                      [n for n in image_models
+                       if n in self.env and hasattr(self.env[n], '_fields')
+                       and 'image_1920' in self.env[n]._fields])
+        return None
+
+    def _add_extra_images(self, product, image_urls, product_variant=None):
+        """Ürüne ek görseller ekle (runtime model discovery ile)"""
         if not image_urls:
             return
 
-        ProductImage = self.env.get('product.image')
-        if not ProductImage:
-            # product.image modeli yoksa URL'leri text alanında sakla
-            urls_text = '\n'.join(image_urls)
-            product.write({'xml_image_urls': urls_text})
+        ImageModel = self._get_extra_image_model()
+        if ImageModel is None:
+            _logger.error("Ek görsel modeli bulunamadı! (tmpl=%s)", product.name)
             return
 
-        for i, url in enumerate(image_urls[:5]):  # Max 5 ek görsel
+        # Duplicate önleme
+        existing_urls = set()
+        model_name = ImageModel._name
+        if product.image_1920:
+            existing_urls.add(product.xml_image_url or '')
+
+        added = 0
+        skipped = 0
+        for i, url in enumerate(image_urls):
+            url = url.strip()
+            if not url or not url.startswith('http'):
+                skipped += 1
+                continue
+            if url in existing_urls:
+                skipped += 1
+                continue
+            existing_urls.add(url)
+
             try:
                 image_data = self._download_image(url)
-                if image_data:
-                    ProductImage.create({
-                        'product_tmpl_id': product.id,
-                        'name': f"{product.name} - Görsel {i+2}",
-                        'image_1920': image_data,
-                    })
-                    _logger.debug(f"Ek görsel eklendi: {product.name} - {i+2}")
+                if not image_data:
+                    skipped += 1
+                    continue
+
+                create_vals = {
+                    'product_tmpl_id': product.id,
+                    'name': f"{product.name} - Görsel {i+2}",
+                    'image_1920': image_data,
+                }
+                if product_variant:
+                    create_vals['product_variant_id'] = product_variant.id
+
+                ImageModel.create(create_vals)
+                added += 1
+                _logger.info(
+                    "Ek görsel eklendi [%d/%d] (%s): %s (variant=%s)",
+                    i + 1, len(image_urls), model_name, product.name,
+                    product_variant.id if product_variant else 'yok',
+                )
             except Exception as e:
                 _logger.warning(f"Ek görsel eklenemedi: {url} - {e}")
+                skipped += 1
+
+        if added:
+            _logger.info(
+                "Ek görsel işlemi tamam: %s - %d eklendi, %d atlandı",
+                product.name, added, skipped,
+            )
 
     def _set_image_from_url(self, product, image_url):
         """
@@ -4604,11 +4737,13 @@ class XmlProductSource(models.Model):
             ('barcode', '=', False),
         ], limit=1)
 
+        product_variant = None
         if new_variant:
             new_variant.write({
                 'barcode': barcode_value,
                 'default_code': f"{data.get('sku')}-{barcode_value[-4:]}",
             })
+            product_variant = new_variant
 
         _logger.info(f"Varyant eklendi: {product_tmpl.name} - Barkod: {barcode_value}")
 
@@ -4672,21 +4807,19 @@ class XmlProductSource(models.Model):
                 # update_only_if_value kapalıysa, değer olmasa da güncelle (0 yap)
                 vals['xml_supplier_stock'] = 0
 
-        # Görsel güncelle
+        # Görsel güncelle (her zaman indir)
         if self.update_images and data.get('image'):
             image_url = data.get('image')
             vals['xml_image_url'] = image_url
-            # Görseli indir veya URL olarak ekle
-            if self.download_images:
-                image_data = self._download_image(image_url)
-                if image_data:
-                    vals['image_1920'] = image_data
+            image_data = self._download_image(image_url)
+            if image_data:
+                vals['image_1920'] = image_data
 
         # Açıklama güncelle
         if self.update_description and data.get('description'):
             description = data.get('description')
             description = self._clean_html(description)
-            vals['description_sale'] = description
+            vals['description_ecommerce'] = description
             vals['description'] = description
 
         # Kategori güncelleme (manuel + otomatik)
@@ -4747,17 +4880,6 @@ class XmlProductSource(models.Model):
                     # Tek varyanttaki barkodu güncelle (farklıysa)
                     if variants.barcode != barcode and self._can_rebind_product_identity(product, data):
                         variants.write({'barcode': barcode})
-
-        # Görsel URL olarak ekle (güncelleme sonrası)
-        if self.update_images and data.get('image') and not self.download_images:
-            self._set_image_from_url(product, data.get('image'))
-
-        # Ek görselleri güncelle
-        if self.update_images and data.get('extra_images'):
-            if self.download_images:
-                self._add_extra_images(product, data.get('extra_images'))
-            else:
-                self._add_extra_images_from_url(product, data.get('extra_images'))
 
         _logger.debug(f"Ürün güncellendi: {product.name}")
 

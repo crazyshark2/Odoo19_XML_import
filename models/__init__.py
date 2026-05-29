@@ -12,3 +12,6 @@ from . import product_enrichment
 from . import xml_variant_mapping
 from . import xml_preview_wizard
 from . import xml_select_path_wizard
+from . import product_extra_image
+from . import product_extra_image_mixin
+
