@@ -92,6 +92,21 @@ Her XML kaynağına ait alan eşleştirmeleri, kaynağın "Alan Eşleştirmeleri
 
 **Önemli:** Liste görünümünde satıra tıklayınca form açılır. Formda `XML Yolu Seç` alanı Many2one olarak çalışır — **yazarken öneri gösterir + olmayan yolu yazıp yeni kayıt oluşturabilirsiniz**.
 
+### Görsel Eşleştirme
+
+Modül görselleri iki farklı şekilde işler:
+
+| Görsel Türü | Açıklama |
+|-------------|----------|
+| **Ana Görsel (`image_1920`)** | XML'deki ilk resim URL'si, `image_1920` field mapping ile eşlenir. URL'den indirilir ve ürünün ana görseli olarak kaydedilir. |
+| **Ek Görseller** | XML'de `<Images><Image>` yapısındaki tüm URL'ler otomatik toplanır. `image_1920` mapping'inde `_get_element_values` ile birden çok resim okunur. Veya `apply_variant_overrides` ile `<Variant><Images><Image>` yapısından çekilir. |
+
+**Field mapping'de sadece `image_1920` kullanın.** XML'deki tum `<Image>` elementleri otomatik toplanir. `image2`, `image3`, `image4` gibi ayri mapping'lere gerek yoktur. Ek gor seller `product.image` modeline kaydedilir ve website galerisinde otomatik gorunur.
+
+**Galeride goruntuleme icin `website_sale` modulu yuklu olmalidir.** Galerideki ek gor seller `product.image` kayitlarindan okunur. `website_sale` yuklu degilse bile ana gor sel (`image_1920`) calisir.
+
+**Import akisi:** Ek gor seller sadece **yeni urun ilk olusturulurken** eklenir. Guncelleme import'larinda ek gor sel eklenmez (birikme onlenir). Mevcut gor selleri silip yeniden import ederek gor selleri yenileyebilirsiniz.
+
 ### 3. Ürünleri Çekme
 
 - **Manuel:** Kaynak formunda "Ürünleri Şimdi Çek" butonu
@@ -204,10 +219,11 @@ Her içe aktarım sonrası kaydın altına log eklenir:
 | `name` | `UrunAdi` | |
 | `list_price` | `Fiyat/KDVDahil` | İç içe yol |
 | `categ_id` | `Kategori/AltKategori` | Kategori iç içe |
-| `image_1920` | `Resimler/Resim[0]` | Dizinin ilk elemanı |
-| `image_2` | `Resimler/Resim[1]` | Dizinin ikinci elemanı |
+| `image_1920` | `Resimler/Resim[0]` | Dizinin ilk elemanı (ana görsel) |
 | `qty_available` | `StokBilgisi/Miktar` | İç içe yol |
 | `uom_id` | — | Varsayılan: `Birimler` |
+
+> **Not:** Ek görseller (`Resimler/Resim[1]`, `Resimler/Resim[2]` vb.) ayri field mapping gerektirmez. Tüm `<Image>` elementleri otomatik algilanir ve `product.image` modeline kaydedilir. `image_1920` field mapping'i sadece ana gorsel icindir.
 
 ### Örnek 3: Attribute Kullanan XML
 
@@ -501,6 +517,22 @@ Cron **her saat** çalışır, `auto_sync=True` olan tüm kaynakları kontrol ed
 
 ## Sık Sorulan Sorular
 
+### Ek görseller nasıl çalışır? Neden `image_2`, `image_3` mapping'i yok?
+
+Odoo 19'da `product.template` uzerinde sadece `image_1920` alani vardir (`image_2`, `image_3` vb. ayri alanlar yoktur). Ek gorseller **`product.image`** modeline kaydedilir (her satir bir gorsel). Website galerisi bu kayitlardan okur. XML'deki tum `<Image>` elementleri otomatik toplanir, ayri field mapping gerekmez.
+
+### Ek gorseller neden her import'ta birikiyor?
+
+**Artik birikmez.** Modul ek gorselleri sadece **yeni urun ilk olusturulurken** ekler. Guncelleme import'larinda ek gorsel eklenmez. Mevcut birikmis gorselleri temizlemek icin:
+```sql
+DELETE FROM product_image WHERE product_tmpl_id = <urun_id>;
+```
+Sonra import'u yeniden calistirin.
+
+### Sitede galeri gorunmuyor, sadece ana gorsel var?
+
+`website_sale` modulu yuklu degilse `product.image` modeli registry'de olmaz. `website_sale`'i yukleyin. `website_sale` yukluyse bile galeri yoksa Odoo'yu guncelleyin.
+
 ### XML'deki element yolunu nasıl bulurum?
 
 "XML Yollarını Keşfet" butonuna tıklayın. İlk 3 ürün taranır ve tüm alt element yolları + örnek değerleri listelenir. Veya XML'i tarayıcıda açıp element yapısını inceleyin.
@@ -541,6 +573,8 @@ XML'de `<Variants><Variant>` yapısı varsa otomatik düzleştirilir: her varyan
 | `product.enrichment.source` | `product_enrichment.py` | Zenginleştirme kaynağı |
 | `xml.variant.mapping` | `xml_variant_mapping.py` | Varyant eşleştirme |
 | `xml.preview.wizard` | `xml_preview_wizard.py` | XML önizleme sihirbazı |
+| `mobilsoft.product.image` | `product_extra_image.py` | Ek ürün görseli (product.image fallback) |
+| `product.extra.image.mixin` | `product_extra_image_mixin.py` | `_get_images()` override ile galeri desteği |
 
 ### API Referansı
 
